@@ -1,0 +1,107 @@
+---
+output:
+  html_document:
+    theme: spacelab
+  pdf_document:
+    keep_tex: no
+  word_document: default
+---
+Class summary
+========================================================
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(knitr)
+opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=4, fig.align='center')
+```
+
+```{r}
+library(xlsx)
+library(reshape)
+library(ggplot2)
+
+dehex <- function(x) {
+  switch(x, 
+         "0" = 0,
+         "1" = 1,
+         "2" = 2,
+         "3" = 3,
+         "4" = 4,
+         "5" = 5,
+         "6" = 6,
+         "7" = 7,
+         "8" = 8,
+         "9" = 9,
+         a = 10,
+         b = 11,
+         c = 12,
+         d = 13,
+         e = 14,
+         f = 15)
+}
+
+grades <- function (x, questions) {
+    if (x == "" | is.na(x)) {
+      rep(NA, times = questions)
+    } else {
+    L <- sapply(strsplit(tolower(x), split = "")[[1]], dehex)
+  names(L) <- paste("Q", 1:questions, sep=".")
+  L
+  }
+}
+
+# need to deal with NA right above and below
+test <- function (x) {
+	questions <- 8
+	data.frame(t(sapply(x, function(y) grades(y, questions))))
+}
+
+makeTest <- function (q) {
+  function(x) test(x, q)
+}
+
+# data ingestion
+# START ROW DEPENDS ON CATALYST
+# END ROW DEPENDS ON NUMBER OF STUDENTS
+# WEBASSIGN EXPORT IS ESSENTIALLY BROKEN, SO HAVE TO CONVERT TO CSV
+# THEN THOSE MORONS ENCODED A COLUMN OF PERCENTAGES USING %!!!!
+cats <- read.xlsx("catalyst3.xls", 1, colClasses="character", startRow=3)[-c(1,2),]
+cats <- cats[1:164,]
+```
+
+Here's a summary of how the class did on the final.
+
+## Final
+
+```{r}
+mid.1 <- test(cats$Final)
+mid.1 <- mid.1[complete.cases(mid.1),]
+qs <- ncol(mid.1)
+mid.1$total <- rowSums(mid.1)
+curr.test <- mid.1
+mid.1.points <- 100
+# exclude the 0s; this probably means something was very wrong, like students absent
+curr.test <- curr.test[curr.test$total != 0,]
+```
+
+There were a total of `r mid.1.points` points on the exam.
+
+The median is `r median(curr.test$total)`, the mean is `r mean(curr.test$total)`, and the standard deviation is `r sd(curr.test$total)`. Here are a few plots showing distributions of points on each question. Keep in mind that the second two problems were each out of 8 points, so the box plots, etc., should be lower. (Perhaps in a future revision I will normalize to show relative performance, regardless of point value.)
+
+
+```{r}
+ggplot(melt(curr.test[,1:qs])) + geom_boxplot(aes(x=variable, y=value)) + xlab("Problem") + ylab("Points")
+```
+```{r}
+ggplot(melt(curr.test[,1:qs])) + geom_histogram(aes(x=value), binwidth=1) + facet_grid(.~variable)
+```
+
+```{r}
+ggplot(curr.test) + geom_histogram(aes(x=total), binwidth=2)
+```
+
+This last plot compares the probability density derived from class performance with a normal distribution having the same mean and standard deviation; it is a smoother representation of how the class distribution compares to a normal.
+
+```{r}
+df <- curr.test[curr.test$total != 0, ]
+ggplot(df, aes(x=total)) + geom_density() + 
+  stat_function(fun=dnorm, args=list(mean=mean(df$total), sd=sd(df$total)), color='red')
+```
