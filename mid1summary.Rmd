@@ -16,7 +16,7 @@ source("helpers.R")
 ```
 
 ```{r}
-mid.1 <- makeTest("catalyst.csv", "Midterm 1", 4, 48)
+mid.1 <- makeTest("catalyst.csv", "Midterm 1", 48)
 ```
 
 ## Midterm 1
